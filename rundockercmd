@@ -1,0 +1,81 @@
+#! /bin/sh
+
+show_help() {
+  echo "Usage: $0 [-w <path>] [-d] <command> [command_args...]"
+  echo
+  echo "Notes:"
+  echo "  gem5/ and gem5-resources/ within this directory are automatically mounted"
+  echo "Options:"
+  echo "  -w    Specify the path within the container to execute the command (ex: gem5/src/cpu/)"
+  echo "  -d    Dry run: print the Docker command without executing it"
+  echo "  -h    Show this help message"
+  exit 0
+}
+
+# Initialize variables
+path="/"
+dry_run=false
+
+# Parse command line options
+while getopts ":w:dh" opt; do
+  case ${opt} in
+  w)
+    path=$OPTARG
+    ;;
+  d)
+    dry_run=true
+    ;;
+  h)
+    show_help
+    ;;
+  \?)
+    echo "Invalid option: -$OPTARG" >&2
+    show_help
+    ;;
+  :)
+    echo "Option -$OPTARG requires an argument." >&2
+    show_help
+    ;;
+  esac
+done
+
+# Shift away the parsed options, leaving the command and its arguments
+shift $((OPTIND - 1))
+
+# Check if command is provided
+if [ $# -eq 0 ]; then
+  echo "Command must be specified."
+  show_help
+fi
+
+# Set the image name
+image_name=amd_gpu
+
+# Construct the Docker command
+cmd="$*"
+
+if [ -z "$GEM5" ]; then
+  echo "ERROR: GEM5 is not defined. Source the env.sh first."
+  exit 1
+fi
+
+if [ -z "$ROOT" ]; then
+  echo "ERROR: ROOT is not defined. Source the env.sh first."
+  exit 1
+fi
+
+if [ -z "$GEM5_RESOURCES" ]; then
+  echo "ERROR: GEM5_RESOURCES is not defined. Source the env.sh first."
+  exit 1
+fi
+
+# docker_command="docker run --rm -u $UID:$GID -v $GEM5:/gem5 -v $GEM5_RESOURCES:/gem5-resources -w /$path $image_name $cmd"
+# docker_command="docker run --rm -v $ROOT/gpu-rodinia/:$ROOT/gpu-rodinia -u $UID:$GID -v $(pwd):$(pwd) -w $(pwd) $image_name $cmd"
+docker_command="docker run --rm -v $ROOT/:$ROOT/ -v $GEM5:$GEM5 -v $BENCH:$BENCH  -u $UID:$GID -w $(pwd) $image_name $cmd"
+
+# Execute or print the Docker command
+if $dry_run; then
+  echo "Dry run: $docker_command"
+else
+  eval $docker_command
+fi

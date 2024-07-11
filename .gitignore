@@ -1,0 +1,6 @@
+*.tar.gz
+*.tar.bz2
+gem5/*
+m5out
+runs/
+
